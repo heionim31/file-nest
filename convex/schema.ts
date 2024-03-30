@@ -2,12 +2,21 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
-  files: defineTable({ name: v.string(), orgId: v.string() }).index(
+  // Define table for storing files
+  files: defineTable({ 
+    name: v.string(), 
+    orgId: v.string(), 
+    fileId: v.id("_storage") 
+  }).index(
     "by_orgId", 
     ["orgId"]
   ),
+  // Define table for storing user information
   users: defineTable({
-    tokenIdentifier: v.string(),
-    orgIds: v.array(v.string()),
-  }).index("by_tokenIdentifier", ["tokenIdentifier"]),
+    tokenIdentifier: v.string(), // User token identifier
+    orgIds: v.array(v.string()), // Array of organization IDs associated with the user
+  }).index(
+    "by_tokenIdentifier", 
+    ["tokenIdentifier"]
+  ),
 });

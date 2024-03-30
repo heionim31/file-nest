@@ -2,28 +2,43 @@ import { ConvexError, v } from "convex/values"
 import { mutation, MutationCtx, query, QueryCtx } from "./_generated/server"
 import { getUser } from "./users";
 
+// Mutation to generate an upload URL for files
+export const generateUploadUrl = mutation(async (ctx) => {
+    // Retrieve user identity
+    const identity = await ctx.auth.getUserIdentity();
+
+    // Check if the user is authenticated
+    if(!identity) {
+        throw new ConvexError("you must be logged in to upload a file");
+    }
+
+    // Generate and return the upload URL
+    return await ctx.storage.generateUploadUrl();
+  });
+
 // Function to check if user has access to the organization
 async function hasAccessToOrg(ctx: QueryCtx | MutationCtx, tokenIdentifier: string, orgId: string) {
+    // Retrieve user information
     const user = await getUser(ctx, tokenIdentifier)
 
+     // Check if the user has access to the organization
     const hasAccess = user.orgIds.includes(orgId) || user.tokenIdentifier.includes(orgId)
 
     return hasAccess;
 }
 
-// Insert data in the convex database.
+// Mutation to create a new file entry in the database
 export const createFile = mutation({
     args: {
-        name: v.string(),
-        orgId: v.string(),
+        name: v.string(), // File name
+        fileId: v.id("_storage"), // File ID
+        orgId: v.string(), // Organization ID
     },
     async handler(ctx, args) {
         // Retrieve user identity
         const identity = await ctx.auth.getUserIdentity();
 
-        console.log(identity);
-
-        // Check if the identity exists
+        // Check if the user is authenticated
         if(!identity) {
             throw new ConvexError("you must be logged in to upload a file");
         }
@@ -39,11 +54,12 @@ export const createFile = mutation({
         await ctx.db.insert("files", {
             name: args.name,
             orgId: args.orgId,
+            fileId: args.fileId
         })
     }
 })
 
-// Fetch data in the convex database
+// Query to retrieve files for a specified organization from the database
 export const getFiles = query({
     args: {
         orgId: v.string(),
@@ -52,16 +68,16 @@ export const getFiles = query({
         // Retrieve user identity
         const identity = await ctx.auth.getUserIdentity();
 
-        // Check if the identity exists
+        // Check if the user is authenticated
         if(!identity) {
-           return [];
+           return []; // Return empty array if user is not authenticated
         }
 
         // Check if the user has access to the organization
         const hasAccess = await hasAccessToOrg(ctx, identity.tokenIdentifier, args.orgId);
 
         if(!hasAccess) {
-            return [];
+            return []; // Return empty array if user does not have access to the organization
          }
 
         // Fetch files from the database for the specified organization
